@@ -1,0 +1,10 @@
+# COLONIZE.EXE builds, by SHA-256, so setup and info can say which one is installed.
+# Plain KEY=VALUE lines, like runtime.lock: no quotes, # starts a comment.
+#
+# The CD installs the original build: its INSTALL/COLONIZE._00 unpacks to it, and
+# Steam's COLONIZE.ISO carries that same archive. MicroProse's patch gives the
+# second one, which also loads COLDATA9.DLL and COCKGUN.WAV (the CD has neither);
+# the patch's README says it "fixes some of the recurring lock-ups" and makes the
+# game run under Windows 95. docs/cd-image.md has the details.
+ae7d9149f056766a534fe8f0006c9512aac1e1004e9776ab3cca818e4833b650=the 1995 release as on the CD, unpatched (1,175,040 bytes)
+59a0e173452924603112cf410483021c02ef0cd3512e310d8966b21e0c176291=the 1995 release with MicroProse's patch (1,227,264 bytes)

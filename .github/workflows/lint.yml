@@ -10,6 +10,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: shellcheck --version && shellcheck colonization.sh
+      - run: perl -c lib/arcv_extract.pl
 
   # macOS ships bash 3.2, and that is the bash colonization.sh has to run on.
   bash-3-2:

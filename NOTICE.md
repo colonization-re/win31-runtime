@@ -7,9 +7,12 @@ This is a launcher for **Sid Meier's Colonization for Windows** (1995),
 present owner, not by this project.
 
 **This repository does not contain the game.** It ships no executable, art, text
-or sound from it. You bring your own copy: `setup` reads the directory you give it
-and copies it into a runtime on your own disk, and nothing from it is ever
-uploaded or committed.
+or sound from it. You bring your own copy, installed or as the CD image Steam sells.
+`setup` reads what you give it and installs it into a runtime on your own disk,
+and nothing from it is ever uploaded or committed. The CD's compressed executable
+is unpacked by this project's own code ([lib/arcv_extract.pl](lib/arcv_extract.pl)).
+The format was established by reverse engineering, for interoperability, in the
+sibling project [win-decomp](https://github.com/colonization-re/win-decomp).
 
 ## What it downloads
 

@@ -18,6 +18,13 @@ It does **not** contain the game. Bring your own copy.
 | Linux | the same script, with any Wine that runs 32-bit programs; not yet tried |
 | Windows 10/11 (64-bit) | planned: `colonization.ps1`, running otvdm natively with no Wine |
 
+| The game from | State |
+| --- | --- |
+| an installed copy, patched or not | works |
+| Steam's `COLONIZE.ISO` | installs, starts, and loads every module; on-screen drawing not yet confirmed |
+| the Windows CD, mounted or copied | the same path as the ISO, minus reading the image |
+| GOG | planned |
+
 ## Quick start (macOS)
 
 **1. A Wine.** Any one of these:
@@ -29,30 +36,54 @@ It does **not** contain the game. Bring your own copy.
 On Apple Silicon, Wine also needs Rosetta 2:
 `softwareupdate --install-rosetta --agree-to-license`.
 
-**2. Your game.** An *installed* copy: the directory holding `COLONIZE.EXE`,
-`COLTEXT0.DLL` and `COLDATA0.DLL` … `COLDATA9.DLL`. The name of the directory does
-not matter.
+**2. Your game.** Any one of these:
+
+- **the Steam release**: its folder holds `COLONIZE.ISO`, an image of the game's
+  CD, and the Windows version is on it (see below);
+- an **installed copy**: the folder holding `COLONIZE.EXE` and `COLDATA0.DLL` …;
+- the **Windows CD** itself, or an `.iso` of it.
 
 **3. Set up once, then play:**
 
 ```sh
 git clone https://github.com/colonization-re/win31-runtime
 cd win31-runtime
-./colonization.sh setup ~/games/colonization
+./colonization.sh setup ~/games/colonization     # the folder, or the .iso file
 ./colonization.sh
 ```
 
+`setup` with no argument uses the current directory, so running it from inside the
+game's folder works too.
+
 Setup takes under a minute. It downloads one thing,
 [otvdm](https://github.com/otya128/winevdm) (1.5 MB), and checks it against
-the checksum pinned in [runtime.lock](runtime.lock).
+the checksum pinned in [runtime.lock](runtime.lock). Installing from an ISO also
+uses `tar` and `perl`, both of which come with macOS. On Linux you need `bsdtar`
+(Debian and Ubuntu: `apt install libarchive-tools`) or 7-Zip.
+
+## Playing the Steam release
+
+Steam sells *Colonization* with `COLONIZE.ISO` in its folder: an image of the CD
+that carried both the DOS and the Windows versions. Point `setup` at that folder
+(or at the ISO) and it installs the Windows version from the image, the same
+files the CD's own installer would copy, without running the installer. How that
+works, and what the image holds: [docs/cd-image.md](docs/cd-image.md).
+
+Two things differ from a boxed copy of the time:
+
+- **It is the original, unpatched 1995 build.** MicroProse's later patch, which
+  fixes "some of the recurring lock-ups", is not on the CD. `setup` and `info` say
+  which build you have.
+- **There is no music.** The game played its music as audio tracks from the CD,
+  and the ISO holds only the data track. Sound effects work as normal.
 
 ## Commands
 
 | | |
 | --- | --- |
-| `./colonization.sh setup GAME_DIR` | build the runtime and copy the game into it. Safe to run again: files already in the runtime, your saves among them, are left alone |
+| `./colonization.sh setup [SOURCE]` | build the runtime and install the game into it, from an installed copy, the CD, or an ISO (default: the current directory). Safe to run again: files already in the runtime, your saves among them, are left alone |
 | `./colonization.sh` | play (`play` is the default command) |
-| `./colonization.sh info` | what was found and where everything lives |
+| `./colonization.sh info` | what was found, which build is installed, and where everything lives |
 | `./colonization.sh wine CMD` | run a Windows command inside the runtime, e.g. `winecfg` |
 
 ## Where things are
@@ -64,8 +95,8 @@ Everything lives in one directory, the **runtime**:
 - anywhere else you like: set `COLWIN_HOME=/some/dir`
 
 The game runs from a copy at `prefix/drive_c/COLONIZE` inside the runtime, and
-**that is where your saved games are** (`*.SAV`). The directory you gave `setup`
-is only ever read: a copy from a CD or a read-only folder works just as well.
+**that is where your saved games are** (`*.SAV`). Whatever you gave `setup` is
+only ever read, so a read-only folder, a CD or Steam's own files work as they are.
 
 To uninstall, delete the runtime directory and this checkout. Back up your saves
 first, because deleting the runtime deletes them.

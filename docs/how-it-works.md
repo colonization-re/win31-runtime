@@ -115,7 +115,8 @@ relative path, so it has to be started from that directory. The directory a
 player has may be read-only (a CD, or files copied off one keep their read-only
 bit), and some players will want their original copy left untouched. So `setup`
 copies the game into the runtime, makes the copy writable, and never writes to
-the source. Running `setup` again copies only files that are missing, so saves
+the source. From a CD or Steam's `COLONIZE.ISO` it installs rather than copies:
+[cd-image.md](cd-image.md) covers that. Running `setup` again copies only files that are missing, so saves
 and edits in the runtime survive it.
 
 ## The runtime directory
