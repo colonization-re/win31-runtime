@@ -9,15 +9,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: shellcheck --version && shellcheck colonization.sh
+      - run: shellcheck --version && shellcheck macos/colonization.sh
       - run: perl -c lib/arcv_extract.pl
 
-  # macOS ships bash 3.2, and that is the bash colonization.sh has to run on.
+  # macOS ships bash 3.2, and that is the bash macos/colonization.sh has to run on.
   bash-3-2:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
       - run: /bin/bash --version | head -n 1
-      - run: /bin/bash -n colonization.sh
-      - run: /bin/bash colonization.sh --help
-      - run: /bin/bash colonization.sh info
+      - run: /bin/bash -n macos/colonization.sh
+      - run: /bin/bash macos/colonization.sh --help
+      - run: /bin/bash macos/colonization.sh info

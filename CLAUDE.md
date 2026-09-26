@@ -15,22 +15,35 @@ explains each layer and quotes the evidence for it.
 
 | | |
 | --- | --- |
-| [colonization.sh](colonization.sh) | the macOS/Linux entry point: `setup`, `play`, `info`, `wine` |
+| [macos/colonization.sh](macos/colonization.sh) | the macOS script: `setup`, `play`, `info`, `wine` |
+| [macos/README.md](macos/README.md) | the macOS manual; the top-level README is the overview |
 | [runtime.lock](runtime.lock) | pinned downloads (otvdm version, URL, SHA-256), shared by every host script |
 | [known-builds.txt](known-builds.txt) | `COLONIZE.EXE` builds by SHA-256 (unpatched CD build, patched build), so setup and info can name them |
-| [lib/arcv\_extract.pl](lib/arcv_extract.pl) | unpacks the CD's `COLONIZE._00` (InstallWrap ARCV + LZHUF) to `COLONIZE.EXE` |
+| [lib/arcv\_extract.pl](lib/arcv_extract.pl) | unpacks the CD's `COLONIZE._00` (InstallWrap ARCV + LZHUF) to `COLONIZE.EXE`; for every Unix script |
 | [docs/cd-image.md](docs/cd-image.md) | installing from the CD or Steam's `COLONIZE.ISO`: what is on it, what setup copies, the ARCV format |
 | [docs/how-it-works.md](docs/how-it-works.md) | why otvdm, why registry overrides, why a copy of the game |
 | [.github/workflows/lint.yml](.github/workflows/lint.yml) | shellcheck, plus a syntax check and smoke run under macOS's bash 3.2 |
 
+## One script per platform
+
+Each platform has its own script in its own folder: `macos/` now, `linux/` and
+`windows/` planned. A script handles its own platform only: no `uname` branching
+for other systems, and it calls the platform's own tools by full path (on macOS,
+`/usr/bin/tar` is bsdtar and reads ISOs, while a GNU tar earlier on `PATH` could
+not). Files that are not tied to a platform live at the repository root and are
+shared: `runtime.lock`, `known-builds.txt`, `lib/`. Scripts find them through
+`ROOT`, the parent of their own folder. The CLI (`setup [SOURCE]`, `play`,
+`info`, `wine`), the `COLWIN_*` variables and the runtime layout should stay the
+same on every platform.
+
 ## Constraints that are easy to break
 
-- **bash 3.2.** macOS ships bash 3.2, so `colonization.sh` must run on it: no
+- **bash 3.2.** macOS ships bash 3.2, so `macos/colonization.sh` must run on it: no
   associative arrays, no `mapfile`, no `${var,,}`, and no `"${arr[@]}"` on an
   array that may be empty (under `set -u`, 3.2 treats that as unbound). Check
-  with `/bin/bash -n colonization.sh`, not the Homebrew bash.
+  with `/bin/bash -n macos/colonization.sh`, not the Homebrew bash.
 - **`runtime.lock` is data, not shell.** It is parsed with `kv`, never
-  `source`d, so that the planned `colonization.ps1` can read it with
+  `source`d, so that the planned Windows script can read it with
   `ConvertFrom-StringData`. Keep it `KEY=VALUE`, with no quotes and no expansion.
 - **The game source is read-only**, whether it is a folder or an ISO. `setup`
   reads it and copies missing files into the runtime. It never writes to the source and never
@@ -60,8 +73,8 @@ runtime so the real one is not touched:
 
 ```sh
 export COLWIN_HOME=/tmp/colwin-test
-./colonization.sh setup /path/to/game                  # or: setup --wine=crossover ...
-WINEDEBUG=+loaddll,+module ./colonization.sh           # close the window, or kill it
+./macos/colonization.sh setup /path/to/game            # or: setup --wine=crossover ...
+WINEDEBUG=+loaddll,+module ./macos/colonization.sh     # close the window, or kill it
 grep -E "got app defaults|Loaded module 'C:|coldata0" "$COLWIN_HOME/last-run.log"
 ```
 
@@ -72,19 +85,22 @@ there (allow a minute). To test the Steam path, run setup on the folder holding
 `COLONIZE.ISO`, or with no argument from inside it. Whether the game *draws*
 needs a person looking at the screen: say which of the two was checked.
 
-If a test run is killed from outside, killing `colonization.sh` does not stop
+If a test run is killed from outside, killing the script does not stop
 Wine. Stop that prefix's processes too: `WINEPREFIX=$COLWIN_HOME/prefix
 wineserver -k` for a plain Wine; under CrossOver, kill the `otvdm.exe` and
 `winewrapper.exe` processes.
 
-Before committing, run `shellcheck colonization.sh`, `/bin/bash -n
-colonization.sh` and `perl -c lib/arcv_extract.pl` (CI runs all three).
+Before committing, run `shellcheck macos/colonization.sh`, `/bin/bash -n
+macos/colonization.sh` and `perl -c lib/arcv_extract.pl` (CI runs all three).
 
 ## Planned
 
-- **Windows:** `colonization.ps1` (plus a `.cmd` shim to double-click), which
-  runs otvdm natively with no Wine and no overrides, reads `runtime.lock`, and
-  uses `%LOCALAPPDATA%\win31-runtime` as its runtime.
-- **Linux:** `colonization.sh` already runs there but has never been tried; the
-  README's status table says so until someone has.
+- **Windows:** `windows/colonization.ps1` (plus a `.cmd` shim to double-click),
+  which runs otvdm natively with no Wine and no overrides, reads `runtime.lock`
+  and `known-builds.txt`, and uses `%LOCALAPPDATA%\win31-runtime` as its runtime.
+  It needs its own ARCV unpacker (PowerShell with inline C#), since Windows has
+  no perl.
+- **Linux:** `linux/colonization.sh`, starting from the macOS script: drop
+  Rosetta, CrossOver's bottle handling and the `/Applications` Wine paths; use
+  `$XDG_DATA_HOME/win31-runtime`, `sha256sum`, and `bsdtar` or 7-Zip for ISOs.
 - **GOG:** one more game-source kind (see above).

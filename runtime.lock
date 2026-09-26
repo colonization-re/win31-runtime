@@ -1,7 +1,7 @@
 # What the runtime downloads, pinned. Plain KEY=VALUE lines: no quotes, no
-# expansion, # starts a comment. colonization.sh parses this file rather than
-# sourcing it, so that a future colonization.ps1 can read the same file with
-# ConvertFrom-StringData and both platforms stay on one version.
+# expansion, # starts a comment. macos/colonization.sh parses this file rather than
+# sourcing it, so that the planned Windows script can read the same file with
+# ConvertFrom-StringData and every platform stays on one version.
 
 # otvdm (winevdm): emulates the 16-bit x86 CPU and thunks Win16 calls to Win32.
 # GPL-2.0, https://github.com/otya128/winevdm. Downloaded at setup, never committed.

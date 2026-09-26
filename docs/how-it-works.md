@@ -11,7 +11,7 @@ observation, the observation is quoted.
 COLONIZE.EXE    16-bit, NE format, Borland C++ 4.52, 1995
   otvdm         software x86 emulator (vm86.dll) + Win16 modules thunked to Win32
     Wine        runs otvdm.exe, an ordinary 32-bit PE program
-      macOS     (Linux: the same; Windows: otvdm runs natively, no Wine)
+      macOS     (Windows, planned: otvdm runs natively, no Wine)
 ```
 
 ## Why Wine's own Win16 support is not used
@@ -138,12 +138,14 @@ CrossOver's window.
 
 ## Other hosts
 
+Each platform gets its own script in its own folder; only [macos/](../macos/)
+exists so far.
+
 - **Windows 10/11, 64-bit.** The same otvdm, run natively, with no Wine and no
-  overrides, since there are no Wine builtins to shadow. The plan is a
-  `colonization.ps1` beside `colonization.sh`, reading the same
-  [runtime.lock](../runtime.lock). (32-bit Windows 10 still has NTVDM, which runs
+  overrides, since there are no Wine builtins to shadow. The plan is
+  `windows/colonization.ps1`, reading the same [runtime.lock](../runtime.lock). (32-bit Windows 10 still has NTVDM, which runs
   Win16 programs natively, but the game would also need WinG installed.)
 - **Linux.** Wine on Linux can build LDT entries, so its own Win16 support may
-  well work there. The runtime still uses otvdm, so that every host runs the
-  game on the same emulator and bugs reproduce across hosts. The script already
-  runs on Linux, but nobody has tried it yet.
+  well work there. The plan is still otvdm, so that every host runs the game on
+  the same emulator and bugs reproduce across hosts: `linux/colonization.sh`,
+  close to the macOS script, reusing [lib/arcv_extract.pl](../lib/arcv_extract.pl).

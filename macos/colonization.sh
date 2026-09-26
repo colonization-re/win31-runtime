@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Run Sid Meier's Colonization for Windows 3.1 (1995) on a modern computer.
+# Run Sid Meier's Colonization for Windows 3.1 (1995) on macOS.
 #
-#   ./colonization.sh setup [SOURCE]        once: build a runtime, copy the game into it
-#   ./colonization.sh                       play (the same as ./colonization.sh play)
-#   ./colonization.sh info                  what was found, and where everything lives
-#   ./colonization.sh wine winecfg          run any Windows command inside the runtime
+#   macos/colonization.sh setup [SOURCE]   once: build a runtime, install the game into it
+#   macos/colonization.sh                  play (the same as: macos/colonization.sh play)
+#   macos/colonization.sh info             what was found, and where everything lives
+#   macos/colonization.sh wine winecfg     run any Windows command inside the runtime
 #
 # The game is a 16-bit Windows 3.1 program, which nothing modern runs directly. It
 # runs on two layers:
@@ -17,8 +17,9 @@
 # into the LDT, and 64-bit macOS does not allow that. docs/how-it-works.md has the
 # evidence.
 #
-# This script is for macOS and Linux. On Windows otvdm runs without Wine; that will be
-# colonization.ps1, reading the same runtime.lock.
+# macOS only. Each platform has its own script in its own directory (linux/ and
+# windows/ are planned); what they share lives at the repository root: runtime.lock,
+# known-builds.txt, and lib/.
 #
 # SOURCE is the game in any form setup knows (see "game sources" below): an installed
 # copy, the Windows CD, or an image of it such as Steam's COLONIZE.ISO. It defaults to
@@ -33,8 +34,9 @@
 set -euo pipefail
 
 HERE=$(cd "$(dirname "$0")" && pwd)
-LOCK=$HERE/runtime.lock
-BUILDS=$HERE/known-builds.txt
+ROOT=$(cd "$HERE/.." && pwd)        # the repository: files every platform shares
+LOCK=$ROOT/runtime.lock
+BUILDS=$ROOT/known-builds.txt
 
 die()  { printf 'error: %s\n' "$*" >&2; exit 1; }
 step() { printf '\n== %s\n' "$*"; }
@@ -76,22 +78,11 @@ find_file() {
 # count ARGS...: how many arguments; with a glob, how many files it matched.
 count() { echo $#; }
 
-case "$(uname -s)" in
-    Darwin) PLATFORM=macos ;;
-    Linux)  PLATFORM=linux ;;
-    MINGW*|MSYS*|CYGWIN*)
-        die "on Windows otvdm runs without Wine; colonization.ps1 is planned but not written yet" ;;
-    *)  die "unsupported system: $(uname -s)" ;;
-esac
+[ "$(uname -s)" = Darwin ] \
+    || die "this is the macOS script; this system is $(uname -s), whose script is not written yet (see README.md)"
 ARCH=$(uname -m)
 
-if [ -n "${COLWIN_HOME:-}" ]; then
-    RUNTIME=$COLWIN_HOME
-elif [ "$PLATFORM" = macos ]; then
-    RUNTIME="$HOME/Library/Application Support/win31-runtime"
-else
-    RUNTIME="${XDG_DATA_HOME:-$HOME/.local/share}/win31-runtime"
-fi
+RUNTIME=${COLWIN_HOME:-"$HOME/Library/Application Support/win31-runtime"}
 PREFIX=$RUNTIME/prefix          # the Wine prefix (a CrossOver bottle, under CrossOver)
 CACHE=$RUNTIME/cache            # downloads, kept so a re-setup needs no network
 CONFIG=$RUNTIME/config          # which Wine built the prefix, and where the game came from
@@ -144,7 +135,6 @@ find_wine() {
     for c in wine wine64; do
         if command -v "$c" >/dev/null 2>&1; then command -v "$c"; return 0; fi
     done
-    [ "$PLATFORM" = macos ] || return 0
     for c in "/Applications/Wine Stable.app/Contents/Resources/wine/bin/wine" \
              "/Applications/Wine Devel.app/Contents/Resources/wine/bin/wine" \
              "/Applications/Wine Staging.app/Contents/Resources/wine/bin/wine" \
@@ -164,11 +154,7 @@ resolve_wine() {
 }
 
 no_wine_help() {
-    if [ "$PLATFORM" = macos ]; then
-        echo "no Wine found. Install one (brew install --cask wine-stable), or CrossOver, or pass --wine=/path/to/wine"
-    else
-        echo "no Wine found. Install your distribution's wine package (with 32-bit support), or pass --wine=/path/to/wine"
-    fi
+    echo "no Wine found. Install one (brew install --cask wine-stable), or CrossOver, or pass --wine=/path/to/wine"
 }
 
 use_wine() {
@@ -195,7 +181,7 @@ wait_wineserver() {
 }
 
 load_config() {
-    [ -f "$CONFIG" ] || die "not set up yet: run ./colonization.sh setup /path/to/game"
+    [ -f "$CONFIG" ] || die "not set up yet: run $0 setup /path/to/game"
     local bin; bin=$(kv "$CONFIG" WINE)
     [ -x "$bin" ] || die "the Wine this runtime was built with is gone: $bin (run setup again)"
     use_wine "$bin"
@@ -208,17 +194,10 @@ WORK=
 cleanup() { if [ -n "$WORK" ]; then rm -rf "$WORK"; fi; }
 trap cleanup EXIT
 
-sha256() {
-    if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1"; else shasum -a 256 "$1"; fi \
-        | cut -d' ' -f1
-}
-
-download() {
-    if command -v curl >/dev/null 2>&1; then curl -fsSL -o "$2" "$1"
-    elif command -v wget >/dev/null 2>&1; then wget -qO "$2" "$1"
-    else die "neither curl nor wget is installed"
-    fi
-}
+# The system's own tools, by full path, so that a GNU or Homebrew build earlier on
+# PATH cannot stand in for them: GNU tar, for one, cannot read an ISO.
+sha256() { /usr/bin/shasum -a 256 "$1" | cut -d' ' -f1; }
+download() { /usr/bin/curl -fsSL -o "$2" "$1"; }
 
 # fetch URL DEST SHA256: DEST, downloaded if absent, and always checked against SHA256.
 fetch() {
@@ -303,24 +282,8 @@ cd_install_dir() {
 }
 
 # iso_extract ISO DEST: every file in a CD image. macOS's tar is bsdtar, which reads
-# ISO 9660 images; on Linux, bsdtar comes in libarchive-tools, or 7-Zip does it.
-iso_extract() {
-    local t
-    if command -v bsdtar >/dev/null 2>&1; then
-        bsdtar -xf "$1" -C "$2" || die "could not read $1"
-        return 0
-    fi
-    case "$(tar --version 2>/dev/null || true)" in
-        *bsdtar*) tar -xf "$1" -C "$2" || die "could not read $1"; return 0 ;;
-    esac
-    for t in 7zz 7z 7za; do
-        if command -v "$t" >/dev/null 2>&1; then
-            "$t" x -y -o"$2" "$1" >/dev/null || die "could not read $1"
-            return 0
-        fi
-    done
-    die "reading $1 needs bsdtar or 7-Zip (on Debian or Ubuntu: apt install libarchive-tools)"
-}
+# ISO 9660 images.
+iso_extract() { /usr/bin/tar -xf "$1" -C "$2" || die "could not read $1"; }
 
 # stage_cd INSTALL_DIR: set STAGED to the CD's INSTALL directory laid out the way its
 # installer leaves it. That is every file the installer copies (its INSTALL.LOG lists
@@ -328,7 +291,6 @@ iso_extract() {
 # it unpacks from COLONIZE._00.
 stage_cd() {
     local f name
-    command -v perl >/dev/null 2>&1 || die "perl is needed to unpack COLONIZE.EXE from the CD"
     STAGED=$WORK/game
     mkdir -p "$STAGED"
     for f in "$1"/*; do
@@ -340,7 +302,7 @@ stage_cd() {
         cp -p "$f" "$STAGED/$name"
     done
     say "unpacking COLONIZE.EXE from COLONIZE._00"
-    perl "$HERE/lib/arcv_extract.pl" "$1/$(find_file "$1" COLONIZE._00)" "$STAGED/COLONIZE.EXE" \
+    /usr/bin/perl "$ROOT/lib/arcv_extract.pl" "$1/$(find_file "$1" COLONIZE._00)" "$STAGED/COLONIZE.EXE" \
         || die "could not unpack COLONIZE._00"
     chmod -R u+w "$STAGED"
 }
@@ -385,7 +347,7 @@ cmd_setup() {
     local kind; kind=$(source_kind "$src")
     [ -n "$kind" ] || die "no game in $src. Give setup an installed copy (the folder with COLONIZE.EXE), the Windows CD, or Steam's COLONIZE.ISO (or the folder holding it)"
 
-    if [ "$PLATFORM" = macos ] && [ "$ARCH" = arm64 ] && ! /usr/bin/arch -x86_64 /usr/bin/true 2>/dev/null; then
+    if [ "$ARCH" = arm64 ] && ! /usr/bin/arch -x86_64 /usr/bin/true 2>/dev/null; then
         die "Wine on Apple Silicon needs Rosetta 2: softwareupdate --install-rosetta --agree-to-license"
     fi
 
@@ -439,10 +401,9 @@ cmd_setup() {
         say "already installed"
     else
         local zip=$CACHE/otvdm-$OTVDM_VERSION.zip top
-        command -v unzip >/dev/null 2>&1 || die "unzip is required to unpack otvdm"
         fetch "$OTVDM_URL" "$zip" "$OTVDM_SHA256"
         mkdir -p "$WORK/otvdm"
-        unzip -q "$zip" -d "$WORK/otvdm"
+        /usr/bin/unzip -q "$zip" -d "$WORK/otvdm"
         top=$(find "$WORK/otvdm" -mindepth 1 -maxdepth 1 -type d | head -n 1)
         { [ -n "$top" ] && [ -f "$top/otvdm.exe" ]; } || die "unexpected layout in $zip"
         # An otvdm.ini the player has edited survives an upgrade.
@@ -513,8 +474,8 @@ cmd_play() {
 }
 
 cmd_info() {
-    echo "platform    $PLATFORM $ARCH"
-    if [ "$PLATFORM" = macos ] && [ "$ARCH" = arm64 ]; then
+    echo "macOS       $(sw_vers -productVersion) $ARCH"
+    if [ "$ARCH" = arm64 ]; then
         if /usr/bin/arch -x86_64 /usr/bin/true 2>/dev/null; then echo "rosetta     installed"
         else echo "rosetta     MISSING (softwareupdate --install-rosetta --agree-to-license)"; fi
     fi
@@ -533,7 +494,7 @@ cmd_info() {
 }
 
 cmd_wine() {
-    [ $# -gt 0 ] || die "usage: ./colonization.sh wine CMD [ARGS...]"
+    [ $# -gt 0 ] || die "usage: $0 wine CMD [ARGS...]"
     load_config
     cd "$GAME_DIR" || die "cannot enter $GAME_DIR"
     w "$@"

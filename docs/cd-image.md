@@ -34,7 +34,7 @@ this CD, that is every file in `INSTALL/` except three (`COLONIZE._00`,
 It also creates a Program Manager group, which does not matter here.
 `setup` does exactly that and no more:
 
-1. extract the image with `bsdtar` (macOS's `tar`; on Linux `bsdtar`, or 7-Zip);
+1. extract the image with `bsdtar` (on macOS, the system's `/usr/bin/tar`);
 2. copy `INSTALL/` except those three files;
 3. unpack `COLONIZE._00` to `COLONIZE.EXE` with [lib/arcv_extract.pl](../lib/arcv_extract.pl);
 4. name the build by its SHA-256 from [known-builds.txt](../known-builds.txt).
