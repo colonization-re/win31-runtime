@@ -1,0 +1,8 @@
+.DS_Store
+*.log
+
+# The game is never committed: bring your own copy.
+/game
+
+# A runtime built inside the checkout (COLWIN_HOME=./runtime).
+/runtime
